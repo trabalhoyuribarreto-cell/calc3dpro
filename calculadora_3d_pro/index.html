@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4338ca">
+  <meta name="description" content="Gestão de orçamentos para impressão 3D — fatiador local, DRE automático e histórico.">
+  <title>Gestão 3D Pro — Calculadora & Fatiador Local</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="toast-root" aria-live="polite"></div>
+
+  <header class="app-header">
+    <div class="container header-inner">
+      <h1><i class="fa-solid fa-layer-group"></i> Gestão 3D Pro</h1>
+      <nav class="tabs" role="tablist">
+        <button class="tab-btn" data-target="producao" role="tab"><i class="fa-solid fa-calculator"></i><span>Orçamento</span></button>
+        <button class="tab-btn" data-target="filamentos" role="tab"><i class="fa-solid fa-dharmachakra"></i><span>Filamentos</span></button>
+        <button class="tab-btn" data-target="maquinas" role="tab"><i class="fa-solid fa-print"></i><span>Máquinas</span></button>
+        <button class="tab-btn" data-target="historico" role="tab"><i class="fa-solid fa-list"></i><span>Histórico</span></button>
+        <button class="tab-btn" data-target="config" role="tab"><i class="fa-solid fa-cog"></i><span>Config</span></button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ABA PRODUÇÃO -->
+    <section id="tab-producao" class="tab-content">
+      <div class="grid-2">
+        <div class="card card-indigo">
+          <h2>Novo Orçamento</h2>
+
+          <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Enviar arquivo G-code ou 3MF">
+            <i id="drop-icon" class="fa-solid fa-file-export"></i>
+            <p id="drop-text" class="drop-title">Arraste seu G-Code ou 3MF aqui</p>
+            <p class="drop-sub">OrcaSlicer · PrusaSlicer · Bambu Studio · Cura</p>
+            <p class="drop-hint"><i class="fa-solid fa-bolt"></i> Preenchimento instantâneo e offline</p>
+            <input type="file" id="file-input" accept=".gcode,.3mf,.gco,.g" hidden>
+          </div>
+
+          <div class="form-stack">
+            <div class="field">
+              <label for="prod-nome">Nome do Projeto <span class="req">*</span></label>
+              <input type="text" id="prod-nome" placeholder="Ex: Suporte de Fone">
+            </div>
+
+            <div class="grid-2-tight">
+              <div class="field">
+                <label for="prod-maquina">Máquina</label>
+                <select id="prod-maquina"></select>
+              </div>
+              <div class="field">
+                <label for="prod-filamento">Filamento</label>
+                <select id="prod-filamento"></select>
+              </div>
+            </div>
+
+            <div class="grid-2-tight">
+              <div class="field">
+                <label for="prod-tempo">Tempo (min)</label>
+                <div class="input-suffix">
+                  <input type="number" id="prod-tempo" min="0" step="1" placeholder="120">
+                  <span>min</span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="prod-peso">Peso (g)</label>
+                <div class="input-suffix">
+                  <input type="number" id="prod-peso" min="0" step="0.1" placeholder="50.5">
+                  <span>g</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-2-tight">
+              <div class="field">
+                <label for="prod-margem">Margem de Lucro</label>
+                <div class="input-suffix">
+                  <input type="number" id="prod-margem" value="150" min="0" step="1">
+                  <span>%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="prod-falha" title="Reserva para eventuais perdas">Taxa Risco/Falha</label>
+                <div class="input-suffix">
+                  <input type="number" id="prod-falha" value="10" min="0" step="1">
+                  <span>%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-green">
+          <h2>Demonstrativo (DRE)</h2>
+          <div class="chart-wrap"><canvas id="chart-custos"></canvas></div>
+
+          <div class="dre">
+            <div class="dre-row"><span><i class="fa-solid fa-cubes icon-blue"></i> Material</span><span id="res-material" class="mono">R$ 0,00</span></div>
+            <div class="dre-row"><span><i class="fa-solid fa-cogs icon-purple"></i> Máquina</span><span id="res-maquina" class="mono">R$ 0,00</span></div>
+            <div class="dre-row"><span><i class="fa-solid fa-bolt icon-yellow"></i> Energia</span><span id="res-energia" class="mono">R$ 0,00</span></div>
+            <div class="dre-row danger"><span><i class="fa-solid fa-triangle-exclamation"></i> Reserva Falhas</span><span id="res-falha" class="mono">R$ 0,00</span></div>
+            <div class="dre-row total"><span>CUSTO OPERACIONAL</span><span id="res-custo" class="mono">R$ 0,00</span></div>
+            <div class="dre-row profit"><span>LUCRO LÍQUIDO</span><span id="res-lucro" class="mono">R$ 0,00</span></div>
+          </div>
+
+          <div class="price-box">
+            <p>Preço Sugerido de Venda</p>
+            <p id="res-preco" class="price">R$ 0,00</p>
+          </div>
+
+          <button id="btn-salvar" class="btn-primary btn-lg"><i class="fa-solid fa-check-circle"></i> Aprovar e Salvar Orçamento</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA FILAMENTOS -->
+    <section id="tab-filamentos" class="tab-content hidden">
+      <div class="card card-blue">
+        <div class="card-head">
+          <h2>Filamentos</h2>
+          <button class="btn-secondary" id="btn-novo-filamento"><i class="fa-solid fa-plus"></i> Novo</button>
+        </div>
+        <div id="lista-filamentos" class="list"></div>
+      </div>
+    </section>
+
+    <!-- ABA MÁQUINAS -->
+    <section id="tab-maquinas" class="tab-content hidden">
+      <div class="card card-purple">
+        <div class="card-head">
+          <h2>Máquinas (Depreciação)</h2>
+          <button class="btn-secondary" id="btn-nova-maquina"><i class="fa-solid fa-plus"></i> Nova</button>
+        </div>
+        <p class="hint">Custo/hora = (valor ÷ vida útil) + (manutenção anual ÷ horas de uso estimadas por ano).</p>
+        <div id="lista-maquinas" class="list"></div>
+      </div>
+    </section>
+
+    <!-- ABA HISTÓRICO -->
+    <section id="tab-historico" class="tab-content hidden">
+      <div class="card card-dark">
+        <div class="card-head">
+          <h2>Histórico</h2>
+          <div class="head-actions">
+            <span id="badge-total-projetos" class="badge">0 Projetos</span>
+            <button class="btn-secondary" id="btn-export-csv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+          </div>
+        </div>
+        <div id="lista-historico" class="grid-cards"></div>
+      </div>
+    </section>
+
+    <!-- ABA CONFIG -->
+    <section id="tab-config" class="tab-content hidden">
+      <div class="card">
+        <h2>Configurações Base</h2>
+
+        <div class="energy-box">
+          <h3><i class="fa-solid fa-plug-circle-bolt"></i> Tarifa de Energia</h3>
+          <p>Divida o "Valor Total a Pagar" pelo "Consumo em kWh" da sua conta de luz para obter seu custo real.</p>
+          <div class="energy-row">
+            <div class="input-prefix"><span>R$</span><input type="number" id="cfg-energia" step="0.01" min="0"></div>
+            <span>por kWh</span>
+            <button id="btn-salvar-energia" class="btn-yellow">Salvar Tarifa</button>
+          </div>
+        </div>
+
+        <h2 class="mt-8">Backup de Dados</h2>
+        <p class="hint">Dados salvos no navegador (localStorage). Exporte regularmente.</p>
+        <div class="grid-2-tight">
+          <button id="btn-export-json" class="btn-dark"><i class="fa-solid fa-download"></i> Exportar JSON</button>
+          <button id="btn-import-json" class="btn-outline"><i class="fa-solid fa-upload"></i> Importar JSON</button>
+          <input type="file" id="import-file" accept=".json" hidden>
+        </div>
+
+        <h2 class="mt-8">Manutenção</h2>
+        <button id="btn-reset" class="btn-danger"><i class="fa-solid fa-trash"></i> Restaurar Padrões (apaga tudo)</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal genérico -->
+  <dialog id="modal">
+    <form id="modal-form" method="dialog">
+      <h3 id="modal-title"></h3>
+      <div id="modal-fields"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-outline" id="modal-cancel">Cancelar</button>
+        <button type="submit" class="btn-primary" id="modal-submit">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/parsers.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
